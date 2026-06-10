@@ -14,13 +14,8 @@ Stack monitoring berbasis Prometheus untuk server metrics. Terdiri dari **Promet
 
 ## Prerequisites
 
-- Docker & Docker Compose v2 sudah terinstall
+- Docker & Docker Compose sudah terinstall
 - Akses `sudo` di server target
-- Server sudah tergabung dalam network eksternal berikut (jika dipakai):
-  - `pgsql_database_network`
-  - `mysql_database_network`
-  - `mariadb_database_network`
-
 ---
 
 ## Setup
@@ -120,6 +115,27 @@ http://<IP_HOST>:<PROMETHEUS_PORT>/targets
 ```
 
 Semua target harus berstatus **UP**.
+
+---
+
+## Firewall (UFW)
+
+Izinkan akses ke port monitoring dari subnet internal.
+
+```bash
+sudo ufw allow from 192.168.0.0/24 to any port 9090
+sudo ufw allow from 192.168.0.0/24 to any port 9100
+sudo ufw allow from 192.168.0.0/24 to any port 8080
+```
+
+Reload dan cek status:
+
+```bash
+sudo ufw reload
+sudo ufw status numbered
+```
+
+> Ganti `192.168.0.0/24` dengan subnet atau IP spesifik yang sesuai environment kamu.
 
 ---
 
