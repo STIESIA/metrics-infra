@@ -34,8 +34,8 @@ cd metrics-infra
 Prometheus menyimpan data time-series ke volume ini. Buat dulu sebelum menjalankan container, supaya Docker tidak auto-create dengan permission `root`.
 
 ```bash
-sudo mkdir -p /var/docker-volume/monitoring/prometheus
-sudo chown -R 65534:65534 /var/docker-volume/monitoring/prometheus
+sudo mkdir -p /var/docker-volume/metrics/prometheus
+sudo chown -R 65534:65534 /var/docker-volume/metrics/prometheus
 ```
 
 > `65534` adalah UID `nobody` — user yang dipakai image `prom/prometheus` secara default.
@@ -197,7 +197,7 @@ docker compose down
 - Cek firewall: `sudo ufw status` — port harus allow dari IP Prometheus
 
 **Container gagal start**
-- Cek permission volume: `ls -la /var/docker-volume/monitoring/prometheus`
+- Cek permission volume: `ls -la /var/docker-volume/metrics/prometheus`
 - Cek port tidak bentrok: `ss -tlnp | grep <PORT>`
 
 **cAdvisor tidak jalan / permission error**
