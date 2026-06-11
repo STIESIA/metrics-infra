@@ -49,9 +49,9 @@ services:
     restart: unless-stopped
     privileged: true
     network_mode: host
-    mem_limit: 256m
-    mem_reservation: 128m
-    cpus: 0.2
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -63,3 +63,7 @@ services:
     command:
       - "--port=${CADVISOR_PORT}"
       - "--listen_ip=${IP_HOST}"
+      - "--disable_metrics=advtcp,cpuLoad,cpu_topology,hugetlb,memory_numa,percpu,process,referenced_memory,resctrl,sched,tcp,udp"
+      - "--docker_only=true" 
+      - "--housekeeping_interval=30s" 
+      - "--max_housekeeping_interval=60s"
