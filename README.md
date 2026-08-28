@@ -1,6 +1,21 @@
 # metrics-infra
 
-Stack monitoring berbasis Prometheus untuk server metrics. Terdiri dari **Prometheus**, **Node Exporter**, dan **cAdvisor**.
+Stack monitoring berbasis Prometheus untuk server metrics STIESIA. Terdiri dari **Prometheus**, **Node Exporter**, dan **cAdvisor** — dikemas via Docker Compose untuk provisioning cepat di server manapun.
+
+## Daftar Isi
+
+- [Stack](#stack)
+- [Arsitektur](#arsitektur)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Firewall (UFW)](#firewall-ufw)
+- [Generate Password `web.yml`](#generate-password-webyml)
+- [Struktur File](#struktur-file)
+- [Operasional](#operasional)
+- [Troubleshooting](#troubleshooting)
+- [Catatan](#catatan)
+
+---
 
 ## Stack
 
@@ -10,12 +25,30 @@ Stack monitoring berbasis Prometheus untuk server metrics. Terdiri dari **Promet
 | Node Exporter | Metrics OS & hardware (CPU, RAM, disk, network) | `9100` |
 | cAdvisor | Metrics container Docker | `8080` |
 
+## Arsitektur
+
+```
+                 ┌─────────────┐
+   scrape (9100) │Node Exporter│  (host metrics)
+        ┌────────┤             │
+        │        └─────────────┘
+        │
+┌───────▼───────┐    ┌─────────────┐
+│   Prometheus   │◄───┤   cAdvisor  │  (container metrics)
+│    (9090)      │scrape (8080)
+└────────────────┘
+```
+
+Prometheus scrape kedua exporter secara periodik dan menyimpan hasilnya sebagai time-series data. Semua service berjalan di satu host lewat Docker Compose — cocok untuk monitoring per-VM (bukan multi-cluster).
+
 ---
 
 ## Prerequisites
 
 - Docker & Docker Compose sudah terinstall
 - Akses `sudo` di server target
+- Port `9090`, `9100`, `8080` tidak dipakai service lain (cek dengan `ss -tlnp`)
+
 ---
 
 ## Setup
@@ -27,8 +60,6 @@ git clone <repo-url> metrics-infra
 cd metrics-infra
 ```
 
----
-
 ### 2. Buat direktori volume Prometheus
 
 Prometheus menyimpan data time-series ke volume ini. Buat dulu sebelum menjalankan container, supaya Docker tidak auto-create dengan permission `root`.
@@ -39,8 +70,6 @@ sudo chown -R 65534:65534 /var/docker-volume/metrics/prometheus
 ```
 
 > `65534` adalah UID `nobody` — user yang dipakai image `prom/prometheus` secara default.
-
----
 
 ### 3. Setting `.env`
 
@@ -68,13 +97,9 @@ CADVISOR_PORT=8080
 
 > **Penting:** `IP_HOST` harus IP interface yang aktif di server. Cek dengan `ip a`.
 
----
-
 ### 4. Setting `prometheus.yml`
 
-File ini **tidak** support interpolasi dari `.env`, jadi IP dan port perlu di-hardcode secara manual.
-
-Sesuaikan bagian `scrape_configs` dengan nilai yang sama seperti di `.env`:
+File ini **tidak** support interpolasi dari `.env`, jadi IP dan port perlu di-hardcode secara manual. Sesuaikan bagian `scrape_configs` dengan nilai yang sama seperti di `.env`:
 
 ```yaml
 scrape_configs:
@@ -93,8 +118,6 @@ scrape_configs:
 ```
 
 > Kalau IP atau port di `.env` diubah, jangan lupa update `prometheus.yml` juga secara manual.
-
----
 
 ### 5. Jalankan stack
 
@@ -135,7 +158,26 @@ sudo ufw reload
 sudo ufw status numbered
 ```
 
-> Ganti `192.168.0.0/24` dengan subnet atau IP spesifik yang sesuai environment kamu.
+> Ganti `192.168.0.0/24` dengan subnet atau IP spesifik yang sesuai environment kamu. Jangan expose port ini ke internet publik tanpa basic auth/TLS (lihat `web.yml`).
+
+---
+
+## Generate Password `web.yml`
+
+`web.yml` dipakai Prometheus untuk basic auth (`--web.config.file`). Password-nya harus dalam bentuk **bcrypt hash**, bukan plaintext.
+
+```bash
+docker run --rm httpd:2.4-alpine htpasswd -nbBC 10 admin passwordkamu
+```
+
+Output-nya berupa `admin:$2y$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` — ambil bagian hash setelah tanda `:`, lalu masukkan ke `web.yml`:
+
+```yaml
+basic_auth_users:
+  admin: $2y$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+> Setelah edit `web.yml`, restart/reload Prometheus (lihat [Operasional](#operasional)) supaya perubahan kepake. Jangan commit `web.yml` yang sudah berisi hash asli — pastikan sudah masuk `.gitignore`.
 
 ---
 
@@ -187,6 +229,13 @@ docker compose logs -f cadvisor
 docker compose down
 ```
 
+### Update image
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
 ---
 
 ## Troubleshooting
@@ -211,3 +260,4 @@ docker compose down
 - Data Prometheus disimpan selama **3 hari** (`--storage.tsdb.retention.time=3d`). Sesuaikan di `docker-compose.yml` jika perlu lebih lama.
 - File `.env` **jangan di-commit** ke Git. Pastikan sudah ada di `.gitignore`.
 - `web.yml` digunakan untuk konfigurasi basic auth / TLS Prometheus — jaga kerahasiaannya.
+- Stack ini belum termasuk visualisasi (Grafana) — Prometheus expose data lewat `/graph` dan `/targets` bawaan, tapi untuk dashboard yang lebih enak dilihat pertimbangkan tambah Grafana sebagai service terpisah ke depannya.

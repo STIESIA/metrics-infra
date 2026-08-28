@@ -1,0 +1,2 @@
+basic_auth_users:
+  admin: $2y$10$0IXhwBx65P5IV/3pbfCh/uUE1f.RX3oWySrHUNG8NDTaHUhWdPZBu # adminpassword
