@@ -1,0 +1,22 @@
+services:
+  alloy:
+    image: grafana/alloy:1.8.1
+    container_name: alloy
+    command: run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    mem_limit: 512m
+    memswap_limit: 512m
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/app1/logs:/var/app1/logs:ro
+      - /var/app2/logs:/var/app2/logs:ro
+      - alloy_data:/var/lib/alloy/data
+    restart: unless-stopped
+
+volumes:
+  alloy_data:
+    name: alloy_data
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/docker-volume/alloy_data
+      o: bind

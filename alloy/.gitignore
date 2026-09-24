@@ -1,0 +1,4 @@
+config.alloy
+.env
+docker-compose.yml
+docker-compose.yaml
