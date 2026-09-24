@@ -1,6 +1,6 @@
 services:
   alloy:
-    image: grafana/alloy:1.8.1
+    image: grafana/alloy:latest
     container_name: alloy
     command: run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
     mem_limit: 512m
