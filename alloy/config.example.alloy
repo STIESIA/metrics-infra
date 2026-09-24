@@ -1,0 +1,39 @@
+// config.example.alloy
+// Copy ke config.alloy, lalu sesuaikan path dan URL Loki.
+
+local.file_match "stiesia_apps" {
+  path_targets = [
+    // path harus sama dengan yang di-mount di docker-compose.yml
+    {__path__ = "/var/docker-volume/app1/logs/*.log", app = "app1"},
+    {__path__ = "/var/docker-volume/app2/logs/*.log", app = "app2"},
+  ]
+}
+
+loki.source.file "stiesia_apps" {
+  targets    = local.file_match.stiesia_apps.targets
+  forward_to = [loki.process.stiesia_apps.receiver]
+}
+
+loki.process "stiesia_apps" {
+  stage.multiline {
+    firstline = "^\\[\\d{4}-\\d{2}-\\d{2}"
+  }
+  stage.regex {
+    expression = "^\\[(?P<ts>[^\\]]+)\\] \\w+\\.(?P<level>[A-Z]+):"
+  }
+  stage.timestamp {
+    source   = "ts"
+    format   = "2006-01-02 15:04:05"
+    location = "Asia/Jakarta"
+  }
+  stage.labels {
+    values = { level = "" }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://<LOKI_HOST>:3100/loki/api/v1/push"
+  }
+}
